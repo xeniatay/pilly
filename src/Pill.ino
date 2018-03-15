@@ -108,14 +108,14 @@ void loop() {
     }
 
     // Reset the daily flag and turn off the button at 12pm
-    // UTC = PST + 8h
-    if (Time.hour() == 20 && alertedToday) {
+    // UTC = PST + 8h (7 during daylight savings)
+    if (Time.hour() == 19 && alertedToday) {
       Particle.publish("stop_alert", PRIVATE);
     }
 
     // Turn on the LED at 11PM
     // UTC = PST + 8h
-    if (Time.hour() == 7 && !alertedToday) {
+    if (Time.hour() == 6 && !alertedToday) {
       alertedToday = true;
 
       if (!pressedToday) {
