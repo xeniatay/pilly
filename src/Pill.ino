@@ -38,7 +38,6 @@ void setup() {
   Particle.subscribe("button_pressed", onButtonPress, MY_DEVICES);
   Particle.subscribe("start_reminder", onStartReminder, MY_DEVICES);
   Particle.subscribe("start_alert", onStartAlert, MY_DEVICES);
-  Particle.subscribe("stop_alert", onStopAlert, MY_DEVICES);
 
   ledOn();
 }
@@ -65,7 +64,7 @@ void onStartAlert(const char *event, const char *data) {
   ledOn();
 }
 
-void onStopAlert(const char *event, const char *data) {
+void resetDay() {
   alertedToday = false;
   pressedToday = false;
   blinkLed = false;
@@ -110,7 +109,7 @@ void loop() {
     // Reset the daily flag and turn off the button at 12pm
     // UTC = PST + 8h (7 during daylight savings)
     if (Time.hour() == 19 && alertedToday) {
-      Particle.publish("stop_alert", PRIVATE);
+      resetDay();
     }
 
     // Turn on the LED at 11PM
