@@ -77,11 +77,19 @@ void loop() {
   if (digitalRead(buttonPin) == HIGH) {
     digitalWrite(D7, HIGH);
     long startTime = millis();
+    bool isLongClick = false;
+    int delayUntilTimeCheck = 250;
     while (digitalRead(buttonPin) == HIGH) {
+      if (--delayUntilTimeCheck == 0) {
+        delayUntilTimeCheck = 250;
+        if (millis() - startTime > holdThreshold) {
+            isLongClick = true;
+            ledOff();
+        }
+      }
       delay(1);
     }
-    long endTime = millis();
-    if (endTime - startTime > holdThreshold) {
+    if (isLongClick) {
       Particle.publish("start_reminder", macAddress, PRIVATE);
     } else {
       Particle.publish("button_pressed", macAddress, PRIVATE);
