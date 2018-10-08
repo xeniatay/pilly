@@ -17,9 +17,6 @@ bool pressedToday;
 String macAddress = "";
 bool blinkLed, ledIsOn;
 
-bool ackedReminder = false;
-bool ackedButton = false;
-
 void setup() {
   alertedToday = false;
   pressedToday = false;
@@ -40,62 +37,39 @@ void setup() {
   // Subscribe only to events from my devices
   Particle.subscribe("button_pressed", onButtonPress, MY_DEVICES);
   Particle.subscribe("start_reminder", onStartReminder, MY_DEVICES);
-  Particle.subscribe("ack_reminder", ackReminder, MY_DEVICES);
-  Particle.subscribe("ack_button", ackButton, MY_DEVICES);
+  Particle.subscribe("start_alert", onStartAlert, MY_DEVICES);
+  Particle.subscribe("stop_alert", onStopAlert, MY_DEVICES);
+
   ledOn();
 }
 
-void ackReminder(const char *event, const char *data) {
-  // only accept the ack from the other mac address
-  if (String(data) != macAddress) {
-    ackedReminder = true;
-  }
-}
-
-void ackButton(const char *event, const char *data) {
-  if (String(data) != macAddress) {
-    ackedButton = true;
-  }
-}
-
 void onButtonPress(const char *event, const char *data) {
-  if (String(data) != macAddress) {
-    Particle.publish("ack_button", macAddress, PRIVATE);
-    ledOff();
-  }
+  pressedToday = true;
+  blinkLed = false;
+  ledOff();
 }
 
 void onStartReminder(const char *event, const char *data) {
-  // flash all the receivers
-  if (String(data) != macAddress) {
-    Particle.publish("ack_reminder", macAddress, PRIVATE);
+  // turn off current button
+  // flash the other one
+  if (String(data) == macAddress) {
+    ledOff();
+    blinkLed = false;
+  } else {
     // no need to blink if already pressed today
     blinkLed = !pressedToday;
   }
 }
 
-void sendReminder() {
-  ackedReminder = false;
-  for (int i = 0; i < 6; i++) {
-    Particle.publish("start_reminder", macAddress, PRIVATE);
-    delay(5000); // allow 5s for this response
-    if (ackedReminder) {
-      return;
-    }
-  }
+void onStartAlert(const char *event, const char *data) {
   ledOn();
 }
 
-void sendButton() {
-  ackedButton = false;
-  for (int i = 0; i < 6; i++) {
-    Particle.publish("button_pressed", macAddress, PRIVATE);
-    delay(5000); // allow 5s for this response
-    if (ackedButton) {
-      return;
-    }
-  }
-  ledOn();
+void onStopAlert(const char *event, const char *data) {
+  alertedToday = false;
+  pressedToday = false;
+  blinkLed = false;
+  ledOff();
 }
 
 void loop() {
@@ -116,14 +90,12 @@ void loop() {
       delay(1);
     }
     if (isLongClick) {
-      sendReminder();
+      Particle.publish("start_reminder", macAddress, PRIVATE);
     } else {
-      sendButton();
+      Particle.publish("button_pressed", macAddress, PRIVATE);
     }
-    pressedToday = true;
-    blinkLed = false;
   } else {
-    digitalWrite(D7, LOW); // onboard LED
+    digitalWrite(D7, LOW);
   }
 
   // Update the internal stats once a second
@@ -146,10 +118,7 @@ void loop() {
     // Reset the daily flag and turn off the button at 12pm
     // UTC = PST + 8h (7 during daylight savings)
     if (Time.hour() == 19 && alertedToday) {
-      alertedToday = false;
-      pressedToday = false;
-      blinkLed = false;
-      ledOff();
+      Particle.publish("stop_alert", PRIVATE);
     }
 
     // Turn on the LED at 11PM
@@ -158,7 +127,7 @@ void loop() {
       alertedToday = true;
 
       if (!pressedToday) {
-        ledOn();
+        Particle.publish("start_alert", PRIVATE);
       }
     }
   }
